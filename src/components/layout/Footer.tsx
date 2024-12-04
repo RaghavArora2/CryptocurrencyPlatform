@@ -10,15 +10,15 @@ const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center space-y-4">
           <div className="flex space-x-6">
-            <a href="https://github.com/raghav" target="_blank" rel="noopener noreferrer" 
+            <a href="https://github.com/RaghavArora2" target="_blank" rel="noopener noreferrer" 
                className={`${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               <Github className="w-6 h-6" />
             </a>
-            <a href="https://twitter.com/raghav" target="_blank" rel="noopener noreferrer"
+            <a href="https://x.com/_Raghav_Arora_" target="_blank" rel="noopener noreferrer"
                className={`${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               <Twitter className="w-6 h-6" />
             </a>
-            <a href="https://linkedin.com/in/raghav" target="_blank" rel="noopener noreferrer"
+            <a href="https://www.linkedin.com/in/raghav-arora2003/" target="_blank" rel="noopener noreferrer"
                className={`${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               <Linkedin className="w-6 h-6" />
             </a>
