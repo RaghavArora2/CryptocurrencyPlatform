@@ -9,7 +9,7 @@ interface Message {
   content: string;
 }
 
-const genAI = new GoogleGenerativeAI('AIzaSyChl9bq220OUfoTCjAN_ptIv5wXO2hboY0');
+const genAI = new GoogleGenerativeAI('AIzaSyBAtURzURlHZMgueYjH1wfr4fGC928XRAw');
 
 const ChatBot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
