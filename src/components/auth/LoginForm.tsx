@@ -1,75 +1,95 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
-import { LogIn } from 'lucide-react';
+import { LogIn, Mail, Lock, TrendingUp } from 'lucide-react';
+import Button from '../ui/Button';
+import Input from '../ui/Input';
+import Card from '../ui/Card';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore(state => state.login);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     try {
       await login(email, password);
       navigate('/trading');
     } catch (err) {
       setError('Invalid credentials');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="max-w-md w-full space-y-8 p-8 bg-gray-800 rounded-lg shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
+      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1639762681485-074b7f938ba0?ixlib=rb-4.0.3')] bg-cover bg-center opacity-10"></div>
+      
+      <Card className="max-w-md w-full space-y-8 p-8 relative z-10 backdrop-blur-sm">
         <div className="text-center">
-          <LogIn className="mx-auto h-12 w-12 text-blue-500" />
-          <h2 className="mt-6 text-3xl font-extrabold text-white">Welcome back</h2>
-          <p className="mt-2 text-sm text-gray-400">
+          <div className="flex items-center justify-center space-x-2 mb-6">
+            <TrendingUp className="h-12 w-12 text-blue-500" />
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                CryptoTrade
+              </h1>
+              <p className="text-sm text-gray-400">Professional Trading Platform</p>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Welcome back</h2>
+          <p className="text-gray-400">
             Don't have an account?{' '}
-            <Link to="/register" className="font-medium text-blue-500 hover:text-blue-400">
+            <Link to="/register" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
               Sign up
             </Link>
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="text-red-500 text-center text-sm bg-red-100/10 p-2 rounded">{error}</div>
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-center text-sm p-3 rounded-xl">
+              {error}
+            </div>
           )}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-t-md relative block w-full px-3 py-3 border border-gray-700 placeholder-gray-500 text-gray-100 bg-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-              />
-            </div>
-            <div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-b-md relative block w-full px-3 py-3 border border-gray-700 placeholder-gray-500 text-gray-100 bg-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-              />
-            </div>
-          </div>
+          
+          <Input
+            type="email"
+            label="Email Address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            icon={Mail}
+            required
+          />
+          
+          <Input
+            type="password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            icon={Lock}
+            required
+          />
 
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-800"
-            >
-              Sign in
-            </button>
-          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full"
+            size="lg"
+            loading={loading}
+            icon={LogIn}
+          >
+            Sign in
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };
