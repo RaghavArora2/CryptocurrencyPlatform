@@ -3,6 +3,7 @@ import { X, Send, Bot, Minimize2, Maximize2, Sparkles } from 'lucide-react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import useThemeStore from '../../store/themeStore';
 import { WelcomeMessage } from './WelcomeMessage';
+import { getCoinPrice, getCoinIdFromSymbol } from '../../services/api/coinGecko';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 
@@ -40,6 +41,37 @@ function cleanGeminiAnswer(text: string) {
   return paragraphs[0] || cleaned.trim();
 }
 
+const extractCoinFromQuery = (query: string): string | null => {
+  const lowerQuery = query.toLowerCase();
+  const priceKeywords = ['price', 'cost', 'value', 'worth', 'trading at'];
+  const hasPriceKeyword = priceKeywords.some(keyword => lowerQuery.includes(keyword));
+  
+  if (!hasPriceKeyword) return null;
+
+  // Common patterns for crypto mentions
+  const patterns = [
+    /(?:bitcoin|btc)/i,
+    /(?:ethereum|eth)/i,
+    /(?:cardano|ada)/i,
+    /(?:polkadot|dot)/i,
+    /(?:chainlink|link)/i,
+    /(?:litecoin|ltc)/i,
+    /(?:binance coin|bnb)/i,
+    /(?:solana|sol)/i,
+    /(?:dogecoin|doge)/i,
+    /(?:avalanche|avax)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = lowerQuery.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+
+  return null;
+};
+
 const ChatBot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -71,13 +103,30 @@ const ChatBot: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Check if user is asking for crypto price
+      const coinSymbol = extractCoinFromQuery(userMessage);
+      let priceInfo = '';
+      
+      if (coinSymbol) {
+        const coinId = getCoinIdFromSymbol(coinSymbol);
+        const priceData = await getCoinPrice(coinId);
+        
+        if (priceData) {
+          const changeDirection = priceData.price_change_percentage_24h >= 0 ? '📈' : '📉';
+          priceInfo = `\n\n💰 Current ${coinSymbol.toUpperCase()} Price: $${priceData.current_price.toLocaleString()} ${changeDirection}\n24h Change: ${priceData.price_change_percentage_24h.toFixed(2)}%\nMarket Cap: $${(priceData.market_cap / 1e9).toFixed(2)}B\n(Source: CoinGecko API)`;
+        }
+      }
+
       const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-      const prompt = `You are a helpful cryptocurrency and trading assistant for CryptoTrade platform. Provide concise, accurate, and helpful information about: ${userMessage}. Keep responses brief and actionable.`;
+      const prompt = `You are a helpful cryptocurrency and trading assistant for CryptoTrade platform. Provide concise, accurate, and helpful information about: ${userMessage}. Keep responses brief and actionable. Focus on practical trading advice and market insights.`;
+      
       const result = await model.generateContent(prompt);
       const text = result?.response?.text?.() || "Sorry, couldn't get a response.";
       const cleanText = cleanGeminiAnswer(text);
+      
+      const finalResponse = cleanText + priceInfo;
 
-      setMessages(prev => [...prev, { role: 'assistant', content: cleanText, timestamp: new Date() }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: finalResponse, timestamp: new Date() }]);
     } catch (error: any) {
       console.error('Error generating response:', error);
       let errMsg = 'I apologize, but I encountered an error. Please try again.';
@@ -109,7 +158,7 @@ const ChatBot: React.FC = () => {
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
-          className="rounded-full p-4 shadow-2xl hover:shadow-3xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-110 transition-all duration-300"
+          className="rounded-full p-4 shadow-2xl hover:shadow-3xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-110 transition-all duration-300 animate-bounce-gentle"
           size="lg"
         >
           <Bot className="w-6 h-6" />
@@ -121,7 +170,7 @@ const ChatBot: React.FC = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
-      <Card className={`w-96 ${isMinimized ? 'h-16' : 'h-[600px]'} flex flex-col transition-all duration-300 shadow-2xl`}>
+      <Card className={`w-96 ${isMinimized ? 'h-16' : 'h-[600px]'} flex flex-col transition-all duration-300 shadow-2xl backdrop-blur-lg`}>
         {/* Header */}
         <div className={`p-4 ${
           theme === 'dark' ? 'bg-gradient-to-r from-gray-700 to-gray-800' : 'bg-gradient-to-r from-gray-50 to-gray-100'
@@ -138,7 +187,7 @@ const ChatBot: React.FC = () => {
                 Crypto Assistant
               </h3>
               <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                Always here to help
+                Real-time prices & insights
               </p>
             </div>
           </div>
@@ -185,7 +234,7 @@ const ChatBot: React.FC = () => {
                           : 'bg-white text-gray-900 border border-gray-200'
                       }`}
                     >
-                      <p className="text-sm leading-relaxed">{message.content}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-line">{message.content}</p>
                       <p className={`text-xs mt-2 opacity-70 ${
                         message.role === 'user' ? 'text-blue-100' : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                       }`}>
@@ -207,7 +256,7 @@ const ChatBot: React.FC = () => {
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce delay-200"></div>
                       </div>
                       <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Thinking...
+                        Fetching real-time data...
                       </span>
                     </div>
                   </div>
@@ -228,7 +277,7 @@ const ChatBot: React.FC = () => {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about crypto, trading, or market trends..."
+                  placeholder="Ask about crypto prices, trading tips, or market trends..."
                   className={`flex-1 rounded-xl px-4 py-3 text-sm ${
                     theme === 'dark'
                       ? 'bg-gray-800 text-white placeholder-gray-400 border-gray-600'
@@ -245,6 +294,9 @@ const ChatBot: React.FC = () => {
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
+              <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                💡 Try: "What's the Bitcoin price?" or "ETH trading analysis"
+              </p>
             </div>
           </>
         )}
