@@ -9,9 +9,36 @@ interface Message {
   content: string;
 }
 
-// Use your actual Gemini API key here
 const genAI = new GoogleGenerativeAI('AIzaSyBAtURzURlHZMgueYjH1wfr4fGC928XRAw');
 const GEMINI_MODEL = 'gemini-1.5-flash';
+
+// CLEANING FUNCTION: makes Gemini answers short, direct, no markdown/disclaimers
+function cleanGeminiAnswer(text: string) {
+  let cleaned = text
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/`/g, "")
+    .replace(/^- /gm, "")
+    .replace(/[_#]/g, "")
+    .replace(/\n\s*\*/g, "\n")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\n{2,}/g, "\n\n");
+
+  // Remove common disclaimer and apology sentences
+  cleaned = cleaned.replace(/This information is for educational purposes only[\s\S]*?(?=\n|$)/gi, "");
+  cleaned = cleaned.replace(/I cannot provide the exact, real-time price of [\s\S]*?(?=\n|$)/gi, "");
+  cleaned = cleaned.replace(/As an AI language model[\s\S]*?(?=\n|$)/gi, "");
+  cleaned = cleaned.replace(/Always do your own research[\s\S]*?(?=\n|$)/gi, "");
+  cleaned = cleaned.replace(/Please specify what you'd like to know[\s\S]*?(?=\n|$)/gi, "");
+  cleaned = cleaned.replace(/To find the current price of[\s\S]*?(?=\n|$)/gi, "");
+  cleaned = cleaned.replace(/For financial advice[\s\S]*?(?=\n|$)/gi, "");
+  cleaned = cleaned.replace(/CoinMarketCap|CoinGecko|Binance|Kraken|Bitfinex/gi, "");
+  cleaned = cleaned.replace(/I (?:apologize|cannot|don't|do not|can't)[^.]*\./gi, "");
+
+  // Only show the first paragraph (or 4 lines max)
+  const paragraphs = cleaned.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  return paragraphs[0] || cleaned.trim();
+}
 
 const ChatBot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,17 +51,14 @@ const ChatBot: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { theme } = useThemeStore();
 
-  // Scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Auto focus on input
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 100);
   }, [isOpen]);
 
-  // Handle sending message
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -52,7 +76,9 @@ const ChatBot: React.FC = () => {
         result?.response?.candidates?.[0]?.content ||
         "Sorry, couldn't get a response.";
 
-      setMessages(prev => [...prev, { role: 'assistant', content: text }]);
+      const cleanText = cleanGeminiAnswer(text);
+
+      setMessages(prev => [...prev, { role: 'assistant', content: cleanText }]);
     } catch (error: any) {
       console.error('Error generating response:', error);
       let errMsg = 'I apologize, but I encountered an error. Please try again.';
@@ -71,7 +97,6 @@ const ChatBot: React.FC = () => {
     }
   };
 
-  // Handle Enter for send, Shift+Enter for new line (if using textarea)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
