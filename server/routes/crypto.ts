@@ -104,9 +104,8 @@ router.get('/coin/:id/history', async (req, res) => {
     });
 
     const formattedData = response.data.prices.map(([timestamp, price]: [number, number]) => ({
-      time: new Date(timestamp).toISOString().split('T')[0],
+      time: Math.floor(timestamp / 1000), // Convert milliseconds to seconds for lightweight-charts
       value: price,
-      timestamp,
     }));
 
     res.json(formattedData);

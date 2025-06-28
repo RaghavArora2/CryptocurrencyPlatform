@@ -101,7 +101,7 @@ export const searchCoins = async (query: string): Promise<any[]> => {
 export const getCoinHistoricalData = async (
   coinId: string,
   days: number = 30
-): Promise<Array<{ time: string; value: number; timestamp: number }>> => {
+): Promise<Array<{ time: number; value: number }>> => {
   try {
     const response = await api.get(`/crypto/coin/${coinId}/history?days=${days}`);
     return response.data;
