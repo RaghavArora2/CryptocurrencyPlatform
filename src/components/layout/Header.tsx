@@ -20,7 +20,7 @@ import Card from '../ui/Card';
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { user, logout } = useAuthStore();
+  const { user, wallets, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,8 +74,18 @@ const Header: React.FC = () => {
     { path: '/profile', label: 'Profile', icon: User },
   ];
 
-  const totalPortfolioValue = user ? 
-    user.balance.usd + (user.balance.btc * 45000) + (user.balance.eth * 3000) : 0;
+  // Calculate total portfolio value from wallets array
+  const totalPortfolioValue = user && wallets ? 
+    wallets.reduce((total, wallet) => {
+      if (wallet.currency === 'USD') {
+        return total + wallet.balance;
+      } else if (wallet.currency === 'BTC') {
+        return total + (wallet.balance * 45000);
+      } else if (wallet.currency === 'ETH') {
+        return total + (wallet.balance * 3000);
+      }
+      return total;
+    }, 0) : 0;
 
   return (
     <header className={`${
