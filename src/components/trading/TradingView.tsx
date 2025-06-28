@@ -8,7 +8,25 @@ import { useMarketData } from '../../hooks/useMarketData';
 import { formatCurrency } from '../../utils/formatters';
 import useThemeStore from '../../store/themeStore';
 import Card from '../ui/Card';
-import { TrendingUp, TrendingDown, DollarSign, Bitcoin, Coins, PieChart, Activity, Wallet, Target, BarChart3 } from 'lucide-react';
+import Button from '../ui/Button';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  Bitcoin, 
+  Coins, 
+  PieChart, 
+  Activity, 
+  Wallet, 
+  Target, 
+  BarChart3,
+  Zap,
+  Star,
+  ArrowUpRight,
+  ArrowDownRight,
+  Eye,
+  RefreshCw
+} from 'lucide-react';
 
 const TradingView: React.FC = () => {
   const { theme } = useThemeStore();
@@ -65,10 +83,11 @@ const TradingView: React.FC = () => {
       }
     });
 
-    // Calculate percentages
+    // Calculate percentages and sort by value
     holdings.forEach(holding => {
       holding.percentage = totalValue > 0 ? (holding.value / totalValue) * 100 : 0;
     });
+    holdings.sort((a, b) => b.value - a.value);
 
     return { totalValue, cryptoValue, usdBalance, holdings };
   }, [wallets, priceMap]);
@@ -108,26 +127,42 @@ const TradingView: React.FC = () => {
   return (
     <main className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="max-w-[1440px] mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Welcome Header */}
+        {/* Enhanced Welcome Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div>
-              <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
-                Welcome back, {user.username}! 👋
-              </h1>
-              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              <div className="flex items-center space-x-3 mb-2">
+                <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Welcome back, {user.username}!
+                </h1>
+                <div className="animate-bounce-gentle">👋</div>
+              </div>
+              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-lg`}>
                 Here's your trading dashboard overview
               </p>
             </div>
-            <div className="hidden md:flex items-center space-x-4">
-              <div className={`px-4 py-2 rounded-xl ${theme === 'dark' ? 'bg-green-900/20' : 'bg-green-50'}`}>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                    Markets Live
-                  </span>
+            
+            <div className="flex items-center space-x-4">
+              <div className={`px-4 py-3 rounded-xl ${theme === 'dark' ? 'bg-green-900/20' : 'bg-green-50'} border ${theme === 'dark' ? 'border-green-500/20' : 'border-green-200'}`}>
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-green-500 rounded-full animate-ping opacity-75"></div>
+                  </div>
+                  <div>
+                    <div className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                      Markets Live
+                    </div>
+                    <div className={`text-xs ${theme === 'dark' ? 'text-green-300' : 'text-green-500'}`}>
+                      Real-time data
+                    </div>
+                  </div>
                 </div>
               </div>
+              
+              <Button variant="outline" size="sm" icon={RefreshCw}>
+                Refresh
+              </Button>
             </div>
           </div>
         </div>
@@ -135,22 +170,22 @@ const TradingView: React.FC = () => {
         {/* Enhanced Portfolio Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Portfolio */}
-          <Card gradient className="p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full -mr-10 -mt-10"></div>
+          <Card gradient className="p-6 relative overflow-hidden hover-lift">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full -mr-16 -mt-16 animate-float"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-                  <PieChart className="w-6 h-6 text-blue-500" />
+                <div className={`p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg`}>
+                  <PieChart className="w-6 h-6 text-white" />
                 </div>
-                <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
+                <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${
                   portfolioChange >= 0 
-                    ? 'bg-green-500/10 text-green-500' 
-                    : 'bg-red-500/10 text-red-500'
+                    ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
+                    : 'bg-red-500/10 text-red-500 border border-red-500/20'
                 }`}>
                   {portfolioChange >= 0 ? (
-                    <TrendingUp className="w-3 h-3" />
+                    <ArrowUpRight className="w-3 h-3" />
                   ) : (
-                    <TrendingDown className="w-3 h-3" />
+                    <ArrowDownRight className="w-3 h-3" />
                   )}
                   <span>{Math.abs(portfolioChange)}%</span>
                 </div>
@@ -159,25 +194,30 @@ const TradingView: React.FC = () => {
                 <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
                   Total Portfolio
                 </p>
-                <p className="text-3xl font-bold text-blue-500 mb-2">
+                <p className="text-3xl font-bold text-gradient-blue mb-2">
                   {formatCurrency(portfolioData.totalValue)}
                 </p>
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                  24h change: {portfolioChange >= 0 ? '+' : ''}{formatCurrency(portfolioData.totalValue * (portfolioChange / 100))}
-                </p>
+                <div className="flex items-center space-x-2">
+                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    24h change:
+                  </p>
+                  <p className={`text-xs font-medium ${portfolioChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {portfolioChange >= 0 ? '+' : ''}{formatCurrency(portfolioData.totalValue * (portfolioChange / 100))}
+                  </p>
+                </div>
               </div>
             </div>
           </Card>
 
           {/* USD Balance */}
-          <Card className="p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full -mr-8 -mt-8"></div>
+          <Card className="p-6 relative overflow-hidden hover-lift" variant="elevated">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full -mr-12 -mt-12"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-green-900/20' : 'bg-green-50'}`}>
+                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-green-900/20' : 'bg-green-50'} border ${theme === 'dark' ? 'border-green-500/20' : 'border-green-200'}`}>
                   <DollarSign className="w-6 h-6 text-green-500" />
                 </div>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                   theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
                 }`}>
                   Cash
@@ -190,24 +230,27 @@ const TradingView: React.FC = () => {
                 <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
                   {formatCurrency(portfolioData.usdBalance)}
                 </p>
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Ready for trading
-                </p>
+                <div className="flex items-center space-x-2">
+                  <Zap className="w-3 h-3 text-green-500" />
+                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Ready for trading
+                  </p>
+                </div>
               </div>
             </div>
           </Card>
 
           {/* Crypto Holdings */}
-          <Card className="p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 rounded-full -mr-8 -mt-8"></div>
+          <Card className="p-6 relative overflow-hidden hover-lift" variant="elevated">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full -mr-12 -mt-12"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
+                <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-purple-900/20' : 'bg-purple-50'} border ${theme === 'dark' ? 'border-purple-500/20' : 'border-purple-200'}`}>
                   <Coins className="w-6 h-6 text-purple-500" />
                 </div>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                   portfolioData.holdings.length > 0 
-                    ? 'bg-purple-500/10 text-purple-500' 
+                    ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20' 
                     : theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
                 }`}>
                   {portfolioData.holdings.length} Assets
@@ -220,25 +263,34 @@ const TradingView: React.FC = () => {
                 <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
                   {formatCurrency(portfolioData.cryptoValue)}
                 </p>
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {portfolioData.totalValue > 0 ? ((portfolioData.cryptoValue / portfolioData.totalValue) * 100).toFixed(1) : 0}% of portfolio
-                </p>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                    <div 
+                      className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-600"
+                      style={{ width: `${portfolioData.totalValue > 0 ? (portfolioData.cryptoValue / portfolioData.totalValue) * 100 : 0}%` }}
+                    ></div>
+                  </div>
+                  <p className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {portfolioData.totalValue > 0 ? ((portfolioData.cryptoValue / portfolioData.totalValue) * 100).toFixed(1) : 0}%
+                  </p>
+                </div>
               </div>
             </div>
           </Card>
 
           {/* Top Holding */}
-          <Card className="p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-full -mr-8 -mt-8"></div>
+          <Card className="p-6 relative overflow-hidden hover-lift" variant="elevated">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full -mr-12 -mt-12"></div>
             <div className="relative">
               {portfolioData.holdings.length > 0 ? (
                 <>
                   <div className="flex items-center justify-between mb-4">
-                    <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-orange-900/20' : 'bg-orange-50'}`}>
+                    <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-orange-900/20' : 'bg-orange-50'} border ${theme === 'dark' ? 'border-orange-500/20' : 'border-orange-200'}`}>
                       <Target className="w-6 h-6 text-orange-500" />
                     </div>
-                    <div className="px-2 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500">
-                      Top Asset
+                    <div className="flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20">
+                      <Star className="w-3 h-3" />
+                      <span>Top Asset</span>
                     </div>
                   </div>
                   <div>
@@ -248,9 +300,16 @@ const TradingView: React.FC = () => {
                     <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
                       {formatCurrency(portfolioData.holdings[0].value)}
                     </p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                      {portfolioData.holdings[0].balance.toFixed(8)} {portfolioData.holdings[0].currency}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {portfolioData.holdings[0].balance.toFixed(6)} {portfolioData.holdings[0].currency}
+                      </p>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {portfolioData.holdings[0].percentage.toFixed(1)}%
+                      </div>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -277,33 +336,39 @@ const TradingView: React.FC = () => {
           </Card>
         </div>
 
-        {/* Portfolio Breakdown */}
+        {/* Enhanced Portfolio Breakdown */}
         {portfolioData.holdings.length > 0 && (
-          <Card className="p-6 mb-8">
+          <Card className="p-6 mb-8 hover-lift" glass>
             <div className="flex items-center justify-between mb-6">
               <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} flex items-center`}>
                 <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
                 Portfolio Breakdown
               </h3>
-              <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {portfolioData.holdings.length} active positions
+              <div className="flex items-center space-x-4">
+                <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {portfolioData.holdings.length} active positions
+                </div>
+                <Button variant="ghost" size="sm" icon={Eye}>
+                  View All
+                </Button>
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {portfolioData.holdings.map((holding, index) => (
+              {portfolioData.holdings.slice(0, 6).map((holding, index) => (
                 <div
                   key={holding.currency}
-                  className={`p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${
-                    theme === 'dark' ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'
+                  className={`p-4 rounded-xl border transition-all duration-300 hover:shadow-lg cursor-pointer group ${
+                    theme === 'dark' ? 'border-gray-700 bg-gray-700/30 hover:bg-gray-700/50' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
-                        index === 0 ? 'bg-orange-500 text-white' :
-                        index === 1 ? 'bg-purple-500 text-white' :
-                        'bg-blue-500 text-white'
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-lg ${
+                        index === 0 ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white' :
+                        index === 1 ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' :
+                        index === 2 ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' :
+                        'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
                       }`}>
                         {holding.currency === 'BTC' ? '₿' : 
                          holding.currency === 'ETH' ? 'Ξ' : 
@@ -328,12 +393,13 @@ const TradingView: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'}`}>
+                  <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'} overflow-hidden`}>
                     <div 
-                      className={`h-2 rounded-full ${
-                        index === 0 ? 'bg-orange-500' :
-                        index === 1 ? 'bg-purple-500' :
-                        'bg-blue-500'
+                      className={`h-2 rounded-full transition-all duration-500 group-hover:animate-pulse ${
+                        index === 0 ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+                        index === 1 ? 'bg-gradient-to-r from-purple-500 to-purple-600' :
+                        index === 2 ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
+                        'bg-gradient-to-r from-gray-500 to-gray-600'
                       }`}
                       style={{ width: `${holding.percentage}%` }}
                     ></div>
@@ -344,16 +410,28 @@ const TradingView: React.FC = () => {
           </Card>
         )}
 
-        {/* Main Trading Interface */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        {/* Enhanced Main Trading Interface */}
+        <div className="trading-grid">
+          <div className="chart-container space-y-6">
             {/* Trading Chart */}
-            <Card className="p-6">
-              <div className="flex items-center mb-4">
-                <Activity className={`w-6 h-6 mr-2 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
-                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Price Charts
-                </h2>
+            <Card className="p-6 h-full" variant="elevated">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <Activity className={`w-6 h-6 mr-2 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Live Price Charts
+                  </h2>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    theme === 'dark' ? 'bg-green-900/20 text-green-400' : 'bg-green-100 text-green-600'
+                  }`}>
+                    Real-time
+                  </div>
+                  <Button variant="ghost" size="sm" icon={RefreshCw}>
+                    Refresh
+                  </Button>
+                </div>
               </div>
               <TradingChart />
             </Card>
@@ -362,7 +440,7 @@ const TradingView: React.FC = () => {
             <MarketOverview assets={assets} />
           </div>
           
-          <div className="space-y-6">
+          <div className="sidebar-container">
             {/* Trade Form */}
             <TradeForm />
             

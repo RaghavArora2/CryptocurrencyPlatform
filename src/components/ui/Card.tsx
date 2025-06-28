@@ -7,6 +7,9 @@ interface CardProps {
   hover?: boolean;
   gradient?: boolean;
   interactive?: boolean;
+  glass?: boolean;
+  glow?: boolean;
+  variant?: 'default' | 'elevated' | 'outlined' | 'filled';
 }
 
 const Card: React.FC<CardProps> = ({ 
@@ -14,30 +17,44 @@ const Card: React.FC<CardProps> = ({
   className = '', 
   hover = false,
   gradient = false,
-  interactive = false
+  interactive = false,
+  glass = false,
+  glow = false,
+  variant = 'default'
 }) => {
   const { theme } = useThemeStore();
 
-  const baseClasses = `rounded-2xl shadow-lg transition-all duration-300 ${
-    theme === 'dark' 
-      ? gradient 
-        ? 'bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700' 
-        : 'bg-gray-800 border border-gray-700'
-      : gradient
-        ? 'bg-gradient-to-br from-white to-gray-50 border border-gray-200'
-        : 'bg-white border border-gray-200'
-  }`;
+  const getVariantClasses = () => {
+    switch (variant) {
+      case 'elevated':
+        return `shadow-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-0`;
+      case 'outlined':
+        return `border-2 ${theme === 'dark' ? 'border-gray-600 bg-transparent' : 'border-gray-300 bg-transparent'} shadow-none`;
+      case 'filled':
+        return `${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} border-0 shadow-md`;
+      default:
+        return theme === 'dark' 
+          ? gradient 
+            ? 'bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700' 
+            : 'bg-gray-800 border border-gray-700'
+          : gradient
+            ? 'bg-gradient-to-br from-white to-gray-50 border border-gray-200'
+            : 'bg-white border border-gray-200';
+    }
+  };
 
-  const hoverClasses = (hover || interactive)
-    ? 'hover:shadow-xl hover:-translate-y-1 cursor-pointer' 
-    : '';
-
-  const interactiveClasses = interactive
-    ? 'active:scale-95 select-none'
-    : '';
+  const baseClasses = `rounded-2xl transition-all duration-300 ${getVariantClasses()}`;
+  
+  const effectClasses = [
+    glass && (theme === 'dark' ? 'glass-effect-dark' : 'glass-effect'),
+    glow && 'shadow-glow',
+    (hover || interactive) && 'hover-lift cursor-pointer',
+    interactive && 'active:scale-95 select-none',
+    'animate-fade-in'
+  ].filter(Boolean).join(' ');
 
   return (
-    <div className={`${baseClasses} ${hoverClasses} ${interactiveClasses} ${className}`}>
+    <div className={`${baseClasses} ${effectClasses} ${className}`}>
       {children}
     </div>
   );
