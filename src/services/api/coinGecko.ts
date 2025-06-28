@@ -104,7 +104,21 @@ export const getCoinHistoricalData = async (
 ): Promise<Array<{ time: number; value: number }>> => {
   try {
     const response = await api.get(`/crypto/coin/${coinId}/history?days=${days}`);
-    return response.data;
+    const rawData = response.data;
+    
+    // Use a Map to ensure unique timestamps and keep the last occurrence for each second
+    const uniqueDataMap = new Map<number, number>();
+    
+    rawData.forEach((item: { time: number; value: number }) => {
+      uniqueDataMap.set(item.time, item.value);
+    });
+    
+    // Convert Map back to array and sort by time in ascending order
+    const uniqueData = Array.from(uniqueDataMap.entries())
+      .map(([time, value]) => ({ time, value }))
+      .sort((a, b) => a.time - b.time);
+    
+    return uniqueData;
   } catch (error) {
     console.error(`Error fetching historical data for ${coinId}:`, error);
     return [];
