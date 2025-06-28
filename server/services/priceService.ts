@@ -23,8 +23,46 @@ const TRACKED_COINS = [
 class APIRateLimiter {
   private lastRequestTime = 0;
   private readonly minInterval = 1000; // 1 second between requests
+  private readonly maxRetries = 3;
+  private retryTracking = new Map<string, number>();
 
-  async makeRequest<T>(requestFn: () => Promise<T>): Promise<T> {
+  private isRetryableError(error: any): boolean {
+    // Check for network-related errors
+    if (error.code === 'ECONNRESET' || error.code === 'ECONNABORTED') {
+      return true;
+    }
+    
+    // Check for socket hang up
+    if (error.message && error.message.includes('socket hang up')) {
+      return true;
+    }
+    
+    // Check for timeout errors
+    if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+      return true;
+    }
+    
+    // Check for rate limiting
+    if (error.response?.status === 429) {
+      return true;
+    }
+    
+    // Check for temporary server errors
+    if (error.response?.status >= 500 && error.response?.status < 600) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  private calculateBackoffDelay(retryCount: number): number {
+    // Exponential backoff: 2^retryCount * 1000ms, with jitter
+    const baseDelay = Math.pow(2, retryCount) * 1000;
+    const jitter = Math.random() * 1000; // Add up to 1 second of jitter
+    return Math.min(baseDelay + jitter, 30000); // Cap at 30 seconds
+  }
+
+  async makeRequest<T>(requestFn: () => Promise<T>, requestKey: string = 'default'): Promise<T> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
     
@@ -35,17 +73,36 @@ class APIRateLimiter {
     
     this.lastRequestTime = Date.now();
     
+    const currentRetryCount = this.retryTracking.get(requestKey) || 0;
+    
     try {
-      return await requestFn();
+      const result = await requestFn();
+      // Reset retry count on success
+      this.retryTracking.delete(requestKey);
+      return result;
     } catch (error: any) {
-      if (error.response?.status === 429) {
-        // Rate limited, wait longer and retry
-        const retryDelay = 5000; // 5 seconds
-        logger.warn(`Rate limited, retrying in ${retryDelay}ms`);
+      logger.warn(`Request failed (attempt ${currentRetryCount + 1}/${this.maxRetries + 1}):`, {
+        error: error.message,
+        code: error.code,
+        status: error.response?.status
+      });
+      
+      if (this.isRetryableError(error) && currentRetryCount < this.maxRetries) {
+        const retryDelay = this.calculateBackoffDelay(currentRetryCount);
+        logger.info(`Retrying request in ${retryDelay}ms...`);
+        
+        // Update retry count
+        this.retryTracking.set(requestKey, currentRetryCount + 1);
+        
         await new Promise(resolve => setTimeout(resolve, retryDelay));
         this.lastRequestTime = Date.now();
-        return await requestFn();
+        
+        // Recursive retry
+        return this.makeRequest(requestFn, requestKey);
       }
+      
+      // Clean up retry tracking on final failure
+      this.retryTracking.delete(requestKey);
       throw error;
     }
   }
@@ -55,8 +112,8 @@ const rateLimiter = new APIRateLimiter();
 
 export async function fetchAndStorePrices() {
   try {
-    const response = await rateLimiter.makeRequest(() =>
-      coinGeckoApi.get('/simple/price', {
+    const response = await rateLimiter.makeRequest(
+      () => coinGeckoApi.get('/simple/price', {
         params: {
           ids: TRACKED_COINS.join(','),
           vs_currencies: 'usd',
@@ -64,7 +121,8 @@ export async function fetchAndStorePrices() {
           include_24hr_vol: true,
           include_market_cap: true,
         },
-      })
+      }),
+      'price-fetch' // Unique key for this request type
     );
 
     for (const [coinId, data] of Object.entries(response.data)) {
@@ -84,7 +142,7 @@ export async function fetchAndStorePrices() {
     logger.info('Price data updated successfully');
     return response.data;
   } catch (error) {
-    logger.error('Error fetching price data:', error);
+    logger.error('Error fetching price data after all retries:', error);
     return null;
   }
 }
