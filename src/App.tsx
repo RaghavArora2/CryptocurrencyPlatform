@@ -7,6 +7,8 @@ import RegisterForm from './components/auth/RegisterForm';
 import TradingView from './components/trading/TradingView';
 import ProfilePage from './pages/ProfilePage';
 import WalletPage from './pages/WalletPage';
+import AdvancedTradingPage from './pages/AdvancedTradingPage';
+import SecurityPage from './pages/SecurityPage';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -54,6 +56,14 @@ function App() {
             }
           />
           <Route
+            path="/advanced-trading"
+            element={
+              <PrivateRoute>
+                <AdvancedTradingPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/profile"
             element={
               <PrivateRoute>
@@ -66,6 +76,14 @@ function App() {
             element={
               <PrivateRoute>
                 <WalletPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/security"
+            element={
+              <PrivateRoute>
+                <SecurityPage />
               </PrivateRoute>
             }
           />

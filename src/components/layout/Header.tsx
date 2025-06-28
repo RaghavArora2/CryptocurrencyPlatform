@@ -12,7 +12,9 @@ import {
   Moon,
   ChevronDown,
   BarChart3,
-  Settings
+  Settings,
+  Target,
+  Shield
 } from 'lucide-react';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
@@ -55,6 +57,12 @@ const Header: React.FC = () => {
       description: 'View and manage your funds'
     },
     { 
+      label: 'Security', 
+      icon: Shield, 
+      onClick: () => navigate('/security'),
+      description: 'Security settings and 2FA'
+    },
+    { 
       label: theme === 'dark' ? 'Light Mode' : 'Dark Mode', 
       icon: theme === 'dark' ? Sun : Moon, 
       onClick: toggleTheme,
@@ -70,8 +78,10 @@ const Header: React.FC = () => {
 
   const navigationItems = [
     { path: '/trading', label: 'Trading', icon: BarChart3 },
+    { path: '/advanced-trading', label: 'Advanced', icon: Target },
     { path: '/wallet', label: 'Wallet', icon: Wallet },
     { path: '/profile', label: 'Profile', icon: User },
+    { path: '/security', label: 'Security', icon: Shield },
   ];
 
   // Calculate total portfolio value from wallets array
@@ -167,7 +177,7 @@ const Header: React.FC = () => {
                     {user.username}
                   </div>
                   <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Active Trader
+                    {user.is_verified ? 'Verified Trader' : 'Active Trader'}
                   </div>
                 </div>
               </div>
