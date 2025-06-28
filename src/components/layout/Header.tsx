@@ -14,14 +14,18 @@ import {
   BarChart3,
   Settings,
   Target,
-  Shield
+  Shield,
+  Bell,
+  Search
 } from 'lucide-react';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const { user, wallets, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
@@ -31,6 +35,9 @@ const Header: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
       }
     };
 
@@ -84,18 +91,32 @@ const Header: React.FC = () => {
     { path: '/security', label: 'Security', icon: Shield },
   ];
 
-  // Calculate total portfolio value from wallets array
+  // Calculate total portfolio value from wallets array with proper price mapping
+  const priceMap = new Map([
+    ['USD', 1],
+    ['BTC', 45000],
+    ['ETH', 3000],
+    ['ADA', 0.45],
+    ['DOT', 7],
+    ['LINK', 15],
+    ['LTC', 100],
+    ['BNB', 300],
+    ['SOL', 100],
+    ['DOGE', 0.08],
+    ['AVAX', 35],
+  ]);
+
   const totalPortfolioValue = user && wallets ? 
     wallets.reduce((total, wallet) => {
-      if (wallet.currency === 'USD') {
-        return total + wallet.balance;
-      } else if (wallet.currency === 'BTC') {
-        return total + (wallet.balance * 45000);
-      } else if (wallet.currency === 'ETH') {
-        return total + (wallet.balance * 3000);
-      }
-      return total;
+      const price = priceMap.get(wallet.currency) || 0;
+      return total + (wallet.balance * price);
     }, 0) : 0;
+
+  const mockNotifications = [
+    { id: 1, title: 'BTC Price Alert', message: 'Bitcoin reached $45,000', time: '2 min ago', type: 'price' },
+    { id: 2, title: 'Trade Executed', message: 'Your ETH buy order was filled', time: '5 min ago', type: 'trade' },
+    { id: 3, title: 'Security Alert', message: 'New login from Chrome', time: '1 hour ago', type: 'security' },
+  ];
 
   return (
     <header className={`${
@@ -150,14 +171,67 @@ const Header: React.FC = () => {
           </nav>
           
           {user && (
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4">
+              {/* Search Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Search}
+                className="hidden lg:flex"
+              />
+
+              {/* Notifications */}
+              <div className="relative" ref={notificationsRef}>
+                <Button
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  variant="ghost"
+                  size="sm"
+                  className="relative"
+                >
+                  <Bell className="w-5 h-5" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                </Button>
+
+                {isNotificationsOpen && (
+                  <div className="absolute top-12 right-0 w-80 z-50 animate-fade-in">
+                    <Card className="py-2 shadow-2xl">
+                      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                        <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          Notifications
+                        </h3>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {mockNotifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`px-4 py-3 transition-colors ${
+                              theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {notification.title}
+                            </div>
+                            <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {notification.message}
+                            </div>
+                            <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} mt-1`}>
+                              {notification.time}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
+                )}
+              </div>
+
               {/* Portfolio Value */}
               <Card className="hidden lg:block px-4 py-2">
                 <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                   Portfolio Value
                 </div>
                 <div className={`font-bold text-lg ${
-                  totalPortfolioValue > 10000 ? 'text-green-500' : 'text-red-500'
+                  totalPortfolioValue > 10000 ? 'text-green-500' : 'text-blue-500'
                 }`}>
                   ${totalPortfolioValue.toLocaleString()}
                 </div>

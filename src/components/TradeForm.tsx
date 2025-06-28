@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowDownUp, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowDownUp, TrendingUp, TrendingDown, Calculator, Zap } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useThemeStore from '../store/themeStore';
+import { useToast } from '../hooks/useToast';
 import api from '../services/api';
 import Button from './ui/Button';
 import Input from './ui/Input';
@@ -12,29 +13,30 @@ const TradeForm: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [price, setPrice] = useState('45000');
   const [crypto, setCrypto] = useState<string>('BTC');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const { wallets, fetchWallets } = useAuthStore();
   const { theme } = useThemeStore();
+  const { success, error } = useToast();
 
   const availableCryptos = [
-    { symbol: 'BTC', name: 'Bitcoin', price: 45000 },
-    { symbol: 'ETH', name: 'Ethereum', price: 3000 },
-    { symbol: 'ADA', name: 'Cardano', price: 0.5 },
-    { symbol: 'DOT', name: 'Polkadot', price: 7 },
-    { symbol: 'LINK', name: 'Chainlink', price: 15 },
-    { symbol: 'LTC', name: 'Litecoin', price: 100 },
-    { symbol: 'BNB', name: 'Binance Coin', price: 300 },
-    { symbol: 'SOL', name: 'Solana', price: 100 },
-    { symbol: 'DOGE', name: 'Dogecoin', price: 0.08 },
-    { symbol: 'AVAX', name: 'Avalanche', price: 35 },
+    { symbol: 'BTC', name: 'Bitcoin', price: 45000, icon: '₿' },
+    { symbol: 'ETH', name: 'Ethereum', price: 3000, icon: 'Ξ' },
+    { symbol: 'ADA', name: 'Cardano', price: 0.5, icon: '₳' },
+    { symbol: 'DOT', name: 'Polkadot', price: 7, icon: '●' },
+    { symbol: 'LINK', name: 'Chainlink', price: 15, icon: '🔗' },
+    { symbol: 'LTC', name: 'Litecoin', price: 100, icon: 'Ł' },
+    { symbol: 'BNB', name: 'Binance Coin', price: 300, icon: '🟡' },
+    { symbol: 'SOL', name: 'Solana', price: 100, icon: '◎' },
+    { symbol: 'DOGE', name: 'Dogecoin', price: 0.08, icon: '🐕' },
+    { symbol: 'AVAX', name: 'Avalanche', price: 35, icon: '🔺' },
   ];
+
+  const selectedCrypto = availableCryptos.find(c => c.symbol === crypto);
+  const usdWallet = wallets.find(w => w.currency === 'USD');
+  const cryptoWallet = wallets.find(w => w.currency === crypto);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
     setLoading(true);
 
     try {
@@ -42,12 +44,12 @@ const TradeForm: React.FC = () => {
       const numPrice = parseFloat(price);
 
       if (isNaN(numAmount) || numAmount <= 0) {
-        setError('Please enter a valid amount');
+        error('Invalid Amount', 'Please enter a valid amount');
         return;
       }
 
       if (isNaN(numPrice) || numPrice <= 0) {
-        setError('Please enter a valid price');
+        error('Invalid Price', 'Please enter a valid price');
         return;
       }
 
@@ -59,14 +61,15 @@ const TradeForm: React.FC = () => {
       });
 
       setAmount('');
-      setSuccess(`Successfully ${tradeType === 'buy' ? 'bought' : 'sold'} ${numAmount} ${crypto}`);
+      success(
+        'Trade Executed', 
+        `Successfully ${tradeType === 'buy' ? 'bought' : 'sold'} ${numAmount} ${crypto}`
+      );
       
       // Refresh wallets
       await fetchWallets();
-      
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Trade failed. Please try again.');
+      error('Trade Failed', err.response?.data?.message || 'Trade failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -74,23 +77,24 @@ const TradeForm: React.FC = () => {
 
   const maxAmount = () => {
     if (tradeType === 'buy') {
-      const usdWallet = wallets.find(w => w.currency === 'USD');
       const maxBuy = usdWallet ? usdWallet.balance / parseFloat(price) : 0;
       setAmount(maxBuy.toFixed(8));
     } else {
-      const cryptoWallet = wallets.find(w => w.currency === crypto);
       const maxSell = cryptoWallet ? cryptoWallet.balance : 0;
       setAmount(maxSell.toString());
     }
   };
 
   const totalValue = (parseFloat(amount) || 0) * (parseFloat(price) || 0);
+  const fee = totalValue * 0.001; // 0.1% fee
+  const finalTotal = tradeType === 'buy' ? totalValue + fee : totalValue - fee;
 
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Place Order
+        <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} flex items-center`}>
+          <Zap className="w-5 h-5 mr-2 text-blue-500" />
+          Quick Trade
         </h2>
         <Button
           onClick={() => setTradeType(tradeType === 'buy' ? 'sell' : 'buy')}
@@ -121,45 +125,49 @@ const TradeForm: React.FC = () => {
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-6">
-        {(error || success) && (
-          <div className={`p-4 rounded-xl text-sm font-medium ${
-            success 
-              ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
-              : 'bg-red-500/10 text-red-500 border border-red-500/20'
-          }`}>
-            {error || success}
-          </div>
-        )}
-
+        {/* Cryptocurrency Selection */}
         <div>
           <label className={`block text-sm font-medium mb-2 ${
             theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
           }`}>
-            Cryptocurrency
+            Select Cryptocurrency
           </label>
-          <select
-            value={crypto}
-            onChange={(e) => {
-              setCrypto(e.target.value);
-              const selectedCrypto = availableCryptos.find(c => c.symbol === e.target.value);
-              if (selectedCrypto) {
-                setPrice(selectedCrypto.price.toString());
-              }
-            }}
-            className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              theme === 'dark'
-                ? 'bg-gray-700 border-gray-600 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-            }`}
-          >
-            {availableCryptos.map((c) => (
-              <option key={c.symbol} value={c.symbol}>
-                {c.name} ({c.symbol})
-              </option>
+          <div className="grid grid-cols-2 gap-2">
+            {availableCryptos.slice(0, 6).map((c) => (
+              <button
+                key={c.symbol}
+                type="button"
+                onClick={() => {
+                  setCrypto(c.symbol);
+                  setPrice(c.price.toString());
+                }}
+                className={`p-3 rounded-xl border transition-all duration-200 ${
+                  crypto === c.symbol
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : theme === 'dark'
+                    ? 'border-gray-600 hover:border-gray-500 bg-gray-700/50'
+                    : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">{c.icon}</span>
+                  <div className="text-left">
+                    <div className={`font-semibold text-sm ${
+                      crypto === c.symbol ? 'text-blue-500' : theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {c.symbol}
+                    </div>
+                    <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      ${c.price.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
+        {/* Amount Input */}
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className={`text-sm font-medium ${
@@ -167,15 +175,23 @@ const TradeForm: React.FC = () => {
             }`}>
               Amount ({crypto})
             </label>
-            <Button
-              type="button"
-              onClick={maxAmount}
-              variant="ghost"
-              size="sm"
-              className="text-xs"
-            >
-              Max
-            </Button>
+            <div className="flex items-center space-x-2">
+              <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Available: {tradeType === 'buy' 
+                  ? `$${(usdWallet?.balance || 0).toLocaleString()}` 
+                  : `${(cryptoWallet?.balance || 0).toFixed(6)} ${crypto}`
+                }
+              </span>
+              <Button
+                type="button"
+                onClick={maxAmount}
+                variant="ghost"
+                size="sm"
+                className="text-xs px-2 py-1"
+              >
+                Max
+              </Button>
+            </div>
           </div>
           <Input
             type="number"
@@ -186,8 +202,9 @@ const TradeForm: React.FC = () => {
           />
         </div>
         
+        {/* Price Input */}
         <Input
-          label="Price (USD)"
+          label={`Price (USD) - Current: $${selectedCrypto?.price.toLocaleString()}`}
           type="number"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
@@ -195,18 +212,48 @@ const TradeForm: React.FC = () => {
           step="0.01"
         />
 
+        {/* Trade Summary */}
         <div className={`p-4 rounded-xl ${
           theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
         }`}>
-          <div className="flex justify-between items-center">
-            <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Total Value:
+          <div className="flex items-center mb-3">
+            <Calculator className="w-4 h-4 mr-2 text-blue-500" />
+            <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Trade Summary
             </span>
-            <span className={`font-bold text-lg ${
-              totalValue > 0 ? 'text-green-500' : theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+          </div>
+          
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                Subtotal:
+              </span>
+              <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                ${totalValue.toFixed(2)}
+              </span>
+            </div>
+            
+            <div className="flex justify-between">
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                Trading Fee (0.1%):
+              </span>
+              <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                ${fee.toFixed(2)}
+              </span>
+            </div>
+            
+            <div className={`flex justify-between pt-2 border-t ${
+              theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
             }`}>
-              ${totalValue.toFixed(2)}
-            </span>
+              <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Total:
+              </span>
+              <span className={`font-bold text-lg ${
+                finalTotal > 0 ? 'text-blue-500' : theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                ${finalTotal.toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
 
