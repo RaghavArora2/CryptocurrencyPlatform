@@ -20,17 +20,52 @@ const TRACKED_COINS = [
   'litecoin', 'binancecoin', 'solana', 'dogecoin', 'avalanche-2'
 ];
 
+class APIRateLimiter {
+  private lastRequestTime = 0;
+  private readonly minInterval = 1000; // 1 second between requests
+
+  async makeRequest<T>(requestFn: () => Promise<T>): Promise<T> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.minInterval) {
+      const delay = this.minInterval - timeSinceLastRequest;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    
+    this.lastRequestTime = Date.now();
+    
+    try {
+      return await requestFn();
+    } catch (error: any) {
+      if (error.response?.status === 429) {
+        // Rate limited, wait longer and retry
+        const retryDelay = 5000; // 5 seconds
+        logger.warn(`Rate limited, retrying in ${retryDelay}ms`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        this.lastRequestTime = Date.now();
+        return await requestFn();
+      }
+      throw error;
+    }
+  }
+}
+
+const rateLimiter = new APIRateLimiter();
+
 export async function fetchAndStorePrices() {
   try {
-    const response = await coinGeckoApi.get('/simple/price', {
-      params: {
-        ids: TRACKED_COINS.join(','),
-        vs_currencies: 'usd',
-        include_24hr_change: true,
-        include_24hr_vol: true,
-        include_market_cap: true,
-      },
-    });
+    const response = await rateLimiter.makeRequest(() =>
+      coinGeckoApi.get('/simple/price', {
+        params: {
+          ids: TRACKED_COINS.join(','),
+          vs_currencies: 'usd',
+          include_24hr_change: true,
+          include_24hr_vol: true,
+          include_market_cap: true,
+        },
+      })
+    );
 
     for (const [coinId, data] of Object.entries(response.data)) {
       const priceData = data as any;
