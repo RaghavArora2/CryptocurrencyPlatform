@@ -4,12 +4,12 @@ import { WebSocketServer } from 'ws';
 import { dbRun } from '../database/init.js';
 import { logger } from '../utils/logger.js';
 
-const COINGECKO_API_KEY = 'CG-V6pwLsTyaMiWPdFmWVQY8gVX';
+const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
 const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
 
 const coinGeckoApi = axios.create({
   baseURL: COINGECKO_BASE_URL,
-  timeout: 30000, // Increased from 10000ms to 30000ms (30 seconds)
+  timeout: 60000, // Increased from 30000ms to 60000ms (60 seconds)
   headers: {
     'x-cg-demo-api-key': COINGECKO_API_KEY,
   },
