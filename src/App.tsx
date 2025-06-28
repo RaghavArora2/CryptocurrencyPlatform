@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import useThemeStore from './store/themeStore';
@@ -13,8 +13,14 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ChatBot from './components/chat/ChatBot';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const { isAuthenticated, fetchWallets } = useAuthStore();
   const { theme } = useThemeStore();
+  
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchWallets();
+    }
+  }, [isAuthenticated, fetchWallets]);
   
   return isAuthenticated ? (
     <div className={`min-h-screen flex flex-col ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>

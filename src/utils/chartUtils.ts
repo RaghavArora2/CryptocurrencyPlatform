@@ -1,5 +1,9 @@
 import { format, addDays } from 'date-fns';
-import { ChartDataPoint } from '../types/chart';
+
+export interface ChartDataPoint {
+  time: number;
+  value: number;
+}
 
 export const generateChartData = (days: number = 30): ChartDataPoint[] => {
   const data: ChartDataPoint[] = [];
@@ -14,7 +18,7 @@ export const generateChartData = (days: number = 30): ChartDataPoint[] => {
     const price = i === 0 ? startPrice : data[i - 1].value * randomChange;
     
     data.push({
-      time: format(date, 'yyyy-MM-dd'),
+      time: Math.floor(date.getTime() / 1000), // Convert to seconds for lightweight-charts
       value: Number(price.toFixed(2)),
     });
   }

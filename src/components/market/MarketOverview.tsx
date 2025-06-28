@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { CryptoAsset } from '../../types/crypto';
 import { TrendingUp, TrendingDown, ArrowUpDown, Search, Eye } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import Card from '../ui/Card';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import CryptoDetailModal from '../crypto/CryptoDetailModal';
+import { CryptoAsset } from '../../hooks/useMarketData';
 
 interface MarketOverviewProps {
   assets: CryptoAsset[];
@@ -161,7 +161,11 @@ const MarketOverview: React.FC<MarketOverviewProps> = ({ assets: initialAssets }
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-3">
                       <div className="text-2xl">
-                        {getCryptoIcon(asset.symbol)}
+                        {asset.image ? (
+                          <img src={asset.image} alt={asset.symbol} className="w-8 h-8 rounded-full" />
+                        ) : (
+                          getCryptoIcon(asset.symbol)
+                        )}
                       </div>
                       <div>
                         <div className={`text-sm font-bold ${
@@ -180,26 +184,26 @@ const MarketOverview: React.FC<MarketOverviewProps> = ({ assets: initialAssets }
                   <td className={`px-6 py-4 whitespace-nowrap text-right font-medium ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>
-                    ${asset.current_price.toLocaleString()}
+                    ${asset.current_price?.toLocaleString() || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium ${
-                      asset.price_change_percentage_24h >= 0 
+                      (asset.price_change_percentage_24h || 0) >= 0 
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' 
                         : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                     }`}>
-                      {asset.price_change_percentage_24h >= 0 ? (
+                      {(asset.price_change_percentage_24h || 0) >= 0 ? (
                         <TrendingUp className="w-3 h-3 mr-1" />
                       ) : (
                         <TrendingDown className="w-3 h-3 mr-1" />
                       )}
-                      {Math.abs(asset.price_change_percentage_24h).toFixed(2)}%
+                      {Math.abs(asset.price_change_percentage_24h || 0).toFixed(2)}%
                     </div>
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-right font-medium ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>
-                    ${(asset.market_cap / 1e9).toFixed(2)}B
+                    ${((asset.market_cap || 0) / 1e9).toFixed(2)}B
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <Button

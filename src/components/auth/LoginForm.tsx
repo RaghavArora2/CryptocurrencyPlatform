@@ -10,20 +10,18 @@ const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const login = useAuthStore(state => state.login);
+  const { login, loading } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setError('');
+    
     try {
       await login(email, password);
       navigate('/trading');
-    } catch (err) {
-      setError('Invalid credentials');
-    } finally {
-      setLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Invalid credentials');
     }
   };
 

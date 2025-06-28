@@ -11,20 +11,18 @@ const RegisterForm: React.FC = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const register = useAuthStore(state => state.register);
+  const { register, loading } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setError('');
+    
     try {
       await register(email, password, username);
       navigate('/trading');
-    } catch (err) {
-      setError('Registration failed');
-    } finally {
-      setLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
     }
   };
 
