@@ -1,52 +1,31 @@
 import axios from 'axios';
-import { CryptoAsset } from '../types/crypto';
 
-const COINGECKO_API = 'https://api.coingecko.com/api/v3';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const api = axios.create({
-  baseURL: COINGECKO_API,
+  baseURL: API_BASE_URL,
   timeout: 10000,
 });
 
-export const fetchMarketData = async (): Promise<CryptoAsset[]> => {
-  try {
-    const response = await api.get('/coins/markets', {
-      params: {
-        vs_currency: 'usd',
-        order: 'market_cap_desc',
-        per_page: 100,
-        sparkline: false,
-      },
-    });
-
-    return response.data.map((item: any) => ({
-      id: item.id,
-      symbol: item.symbol,
-      name: item.name,
-      current_price: item.current_price,
-      price_change_percentage_24h: item.price_change_percentage_24h,
-      market_cap: item.market_cap,
-      volume_24h: item.total_volume,
-    }));
-  } catch (error) {
-    console.error('Error fetching market data:', error);
-    return [];
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth-token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-};
+  return config;
+});
 
-export const fetchCryptoPrice = async (id: string): Promise<number> => {
-  try {
-    const response = await api.get('/simple/price', {
-      params: {
-        ids: id,
-        vs_currencies: 'usd',
-      },
-    });
-    return response.data[id]?.usd || 0;
-  } catch (error) {
-    console.error('Error fetching price:', error);
-    return 0;
+// Handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth-token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
   }
-};
+);
 
-export { api };
+export default api;

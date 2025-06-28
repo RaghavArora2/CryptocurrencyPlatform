@@ -1,98 +1,131 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AuthState, User } from '../types/auth';
+import api from '../services/api';
+import { wsService } from '../services/websocket';
+
+interface User {
+  id: string;
+  email: string;
+  username: string;
+  bio?: string;
+  avatar?: string;
+  is_verified?: boolean;
+  two_factor_enabled?: boolean;
+}
+
+interface Wallet {
+  currency: string;
+  balance: number;
+  locked_balance: number;
+}
+
+interface AuthState {
+  user: User | null;
+  wallets: Wallet[];
+  token: string | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, username: string) => Promise<void>;
+  logout: () => void;
+  updateProfile: (data: Partial<User>) => Promise<void>;
+  fetchWallets: () => Promise<void>;
+  deposit: (currency: string, amount: number) => Promise<void>;
+  withdraw: (currency: string, amount: number) => Promise<void>;
+}
 
 const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      wallets: [],
       token: null,
       isAuthenticated: false,
+      loading: false,
 
       login: async (email: string, password: string) => {
+        set({ loading: true });
         try {
-          const user = {
-            id: '1',
-            email,
-            username: email.split('@')[0],
-            balance: { usd: 10000, btc: 0.5, eth: 2 },
-            bio: 'Crypto enthusiast and trader',
-            avatar: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131'
-          };
-          const token = 'dummy-token';
+          const response = await api.post('/auth/login', { email, password });
+          const { token, user } = response.data;
           
+          localStorage.setItem('auth-token', token);
           set({ user, token, isAuthenticated: true });
-        } catch (error) {
-          console.error('Login failed:', error);
-          throw error;
+          
+          // Connect WebSocket
+          wsService.connect(token);
+          
+          // Fetch wallets
+          await get().fetchWallets();
+        } catch (error: any) {
+          throw new Error(error.response?.data?.message || 'Login failed');
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      register: async (email: string, password: string, username: string) => {
+        set({ loading: true });
+        try {
+          const response = await api.post('/auth/register', { email, password, username });
+          const { token, user } = response.data;
+          
+          localStorage.setItem('auth-token', token);
+          set({ user, token, isAuthenticated: true });
+          
+          // Connect WebSocket
+          wsService.connect(token);
+          
+          // Fetch wallets
+          await get().fetchWallets();
+        } catch (error: any) {
+          throw new Error(error.response?.data?.message || 'Registration failed');
+        } finally {
+          set({ loading: false });
         }
       },
 
       logout: () => {
-        set({ user: null, token: null, isAuthenticated: false });
+        localStorage.removeItem('auth-token');
+        wsService.disconnect();
+        set({ user: null, wallets: [], token: null, isAuthenticated: false });
       },
 
-      register: async (email: string, password: string, username: string) => {
+      updateProfile: async (data: Partial<User>) => {
         try {
-          const user = {
-            id: '1',
-            email,
-            username,
-            balance: { usd: 10000, btc: 0, eth: 0 },
-            bio: '',
-            avatar: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131'
-          };
-          const token = 'dummy-token';
-          
-          set({ user, token, isAuthenticated: true });
+          await api.put('/user/profile', data);
+          set(state => ({ user: state.user ? { ...state.user, ...data } : null }));
+        } catch (error: any) {
+          throw new Error(error.response?.data?.message || 'Profile update failed');
+        }
+      },
+
+      fetchWallets: async () => {
+        try {
+          const response = await api.get('/user/wallets');
+          set({ wallets: response.data });
         } catch (error) {
-          console.error('Registration failed:', error);
-          throw error;
+          console.error('Failed to fetch wallets:', error);
         }
       },
 
-      updateBalance: (type: 'buy' | 'sell', amount: number, price: number, crypto: 'btc' | 'eth' | 'usd') => {
-        const user = get().user;
-        if (!user) return;
-
-        const newBalance = { ...user.balance };
-
-        if (crypto === 'usd') {
-          if (type === 'buy') {
-            newBalance.usd += amount;
-          } else {
-            if (newBalance.usd < amount) {
-              throw new Error('Insufficient USD balance');
-            }
-            newBalance.usd -= amount;
-          }
-        } else {
-          const totalCost = amount * price;
-          
-          if (type === 'buy') {
-            if (newBalance.usd < totalCost) {
-              throw new Error('Insufficient USD balance');
-            }
-            newBalance.usd -= totalCost;
-            newBalance[crypto] += amount;
-          } else {
-            if (newBalance[crypto] < amount) {
-              throw new Error(`Insufficient ${crypto.toUpperCase()} balance`);
-            }
-            newBalance.usd += totalCost;
-            newBalance[crypto] -= amount;
-          }
+      deposit: async (currency: string, amount: number) => {
+        try {
+          await api.post('/user/deposit', { currency, amount });
+          await get().fetchWallets();
+        } catch (error: any) {
+          throw new Error(error.response?.data?.message || 'Deposit failed');
         }
-
-        set({ user: { ...user, balance: newBalance } });
       },
 
-      updateProfile: (data: Partial<User>) => {
-        const user = get().user;
-        if (!user) return;
-        
-        set({ user: { ...user, ...data } });
-      }
+      withdraw: async (currency: string, amount: number) => {
+        try {
+          await api.post('/user/withdraw', { currency, amount });
+          await get().fetchWallets();
+        } catch (error: any) {
+          throw new Error(error.response?.data?.message || 'Withdrawal failed');
+        }
+      },
     }),
     {
       name: 'auth-storage',
@@ -100,7 +133,7 @@ const useAuthStore = create<AuthState>()(
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated 
-      })
+      }),
     }
   )
 );

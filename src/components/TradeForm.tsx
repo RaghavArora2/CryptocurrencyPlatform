@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowDownUp, TrendingUp, TrendingDown } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useThemeStore from '../store/themeStore';
+import api from '../services/api';
 import Button from './ui/Button';
 import Input from './ui/Input';
 import Card from './ui/Card';
@@ -10,17 +11,31 @@ const TradeForm: React.FC = () => {
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
   const [price, setPrice] = useState('45000');
-  const [crypto, setCrypto] = useState<'btc' | 'eth'>('btc');
+  const [crypto, setCrypto] = useState<string>('BTC');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const updateBalance = useAuthStore(state => state.updateBalance);
-  const user = useAuthStore(state => state.user);
+  const [loading, setLoading] = useState(false);
+  const { wallets, fetchWallets } = useAuthStore();
   const { theme } = useThemeStore();
+
+  const availableCryptos = [
+    { symbol: 'BTC', name: 'Bitcoin', price: 45000 },
+    { symbol: 'ETH', name: 'Ethereum', price: 3000 },
+    { symbol: 'ADA', name: 'Cardano', price: 0.5 },
+    { symbol: 'DOT', name: 'Polkadot', price: 7 },
+    { symbol: 'LINK', name: 'Chainlink', price: 15 },
+    { symbol: 'LTC', name: 'Litecoin', price: 100 },
+    { symbol: 'BNB', name: 'Binance Coin', price: 300 },
+    { symbol: 'SOL', name: 'Solana', price: 100 },
+    { symbol: 'DOGE', name: 'Dogecoin', price: 0.08 },
+    { symbol: 'AVAX', name: 'Avalanche', price: 35 },
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
 
     try {
       const numAmount = parseFloat(amount);
@@ -36,26 +51,35 @@ const TradeForm: React.FC = () => {
         return;
       }
 
-      updateBalance(tradeType, numAmount, numPrice, crypto);
+      await api.post('/trading/order', {
+        symbol: crypto,
+        side: tradeType,
+        amount: numAmount,
+        price: numPrice,
+      });
+
       setAmount('');
+      setSuccess(`Successfully ${tradeType === 'buy' ? 'bought' : 'sold'} ${numAmount} ${crypto}`);
       
-      setSuccess(`Successfully ${tradeType === 'buy' ? 'bought' : 'sold'} ${numAmount} ${crypto.toUpperCase()}`);
+      // Refresh wallets
+      await fetchWallets();
+      
       setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Trade failed. Please try again.');
-      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Trade failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const maxAmount = () => {
     if (tradeType === 'buy') {
-      const maxBuy = user ? user.balance.usd / parseFloat(price) : 0;
+      const usdWallet = wallets.find(w => w.currency === 'USD');
+      const maxBuy = usdWallet ? usdWallet.balance / parseFloat(price) : 0;
       setAmount(maxBuy.toFixed(8));
     } else {
-      const maxSell = user ? user.balance[crypto] : 0;
+      const cryptoWallet = wallets.find(w => w.currency === crypto);
+      const maxSell = cryptoWallet ? cryptoWallet.balance : 0;
       setAmount(maxSell.toString());
     }
   };
@@ -116,8 +140,11 @@ const TradeForm: React.FC = () => {
           <select
             value={crypto}
             onChange={(e) => {
-              setCrypto(e.target.value as 'btc' | 'eth');
-              setPrice(e.target.value === 'btc' ? '45000' : '3000');
+              setCrypto(e.target.value);
+              const selectedCrypto = availableCryptos.find(c => c.symbol === e.target.value);
+              if (selectedCrypto) {
+                setPrice(selectedCrypto.price.toString());
+              }
             }}
             className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
               theme === 'dark'
@@ -125,8 +152,11 @@ const TradeForm: React.FC = () => {
                 : 'bg-white border-gray-300 text-gray-900'
             }`}
           >
-            <option value="btc">Bitcoin (BTC)</option>
-            <option value="eth">Ethereum (ETH)</option>
+            {availableCryptos.map((c) => (
+              <option key={c.symbol} value={c.symbol}>
+                {c.name} ({c.symbol})
+              </option>
+            ))}
           </select>
         </div>
 
@@ -135,7 +165,7 @@ const TradeForm: React.FC = () => {
             <label className={`text-sm font-medium ${
               theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
             }`}>
-              Amount ({crypto.toUpperCase()})
+              Amount ({crypto})
             </label>
             <Button
               type="button"
@@ -185,9 +215,10 @@ const TradeForm: React.FC = () => {
           variant={tradeType === 'buy' ? 'success' : 'danger'}
           className="w-full"
           size="lg"
+          loading={loading}
           icon={tradeType === 'buy' ? TrendingUp : TrendingDown}
         >
-          {tradeType === 'buy' ? 'Buy' : 'Sell'} {crypto.toUpperCase()}
+          {tradeType === 'buy' ? 'Buy' : 'Sell'} {crypto}
         </Button>
       </form>
     </Card>

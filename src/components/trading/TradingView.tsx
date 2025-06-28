@@ -5,20 +5,32 @@ import TradeForm from '../TradeForm';
 import MarketOverview from '../market/MarketOverview';
 import useAuthStore from '../../store/authStore';
 import { useMarketData } from '../../hooks/useMarketData';
-import { generateChartData, formatCurrency, calculatePortfolioValue } from '../../utils/chartUtils';
+import { formatCurrency } from '../../utils/formatters';
 import useThemeStore from '../../store/themeStore';
 import Card from '../ui/Card';
-import { TrendingUp, TrendingDown, DollarSign, Bitcoin, Coins } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Bitcoin, Coins, PieChart, Activity } from 'lucide-react';
 
 const TradingView: React.FC = () => {
   const { theme } = useThemeStore();
   const { assets, loading } = useMarketData();
-  const user = useAuthStore(state => state.user);
+  const { user, wallets } = useAuthStore();
 
-  const chartData = useMemo(() => generateChartData(), []);
-  const portfolioValue = useMemo(() => 
-    user ? calculatePortfolioValue(user.balance.btc, user.balance.eth, user.balance.usd) : 0,
-  [user?.balance.btc, user?.balance.eth, user?.balance.usd]);
+  const portfolioValue = useMemo(() => {
+    if (!wallets.length) return 0;
+    
+    let total = 0;
+    wallets.forEach(wallet => {
+      if (wallet.currency === 'USD') {
+        total += wallet.balance;
+      } else {
+        const asset = assets.find(a => a.symbol === wallet.currency);
+        if (asset) {
+          total += wallet.balance * asset.current_price;
+        }
+      }
+    });
+    return total;
+  }, [wallets, assets]);
 
   const sampleOrderBook = useMemo(() => ({
     bids: Array.from({ length: 15 }, (_, i) => ({
@@ -50,6 +62,9 @@ const TradingView: React.FC = () => {
     );
   }
 
+  const usdWallet = wallets.find(w => w.currency === 'USD');
+  const btcWallet = wallets.find(w => w.currency === 'BTC');
+  const ethWallet = wallets.find(w => w.currency === 'ETH');
   const portfolioChange = portfolioValue > 10000 ? 12.5 : -5.2;
 
   return (
@@ -79,7 +94,7 @@ const TradingView: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <DollarSign className={`w-8 h-8 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+              <PieChart className={`w-8 h-8 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
           </Card>
 
@@ -90,7 +105,7 @@ const TradingView: React.FC = () => {
                   USD Balance
                 </p>
                 <p className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {formatCurrency(user.balance.usd)}
+                  {formatCurrency(usdWallet?.balance || 0)}
                 </p>
                 <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                   Available for trading
@@ -107,10 +122,10 @@ const TradingView: React.FC = () => {
                   BTC Holdings
                 </p>
                 <p className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {user.balance.btc.toFixed(8)}
+                  {(btcWallet?.balance || 0).toFixed(8)}
                 </p>
                 <p className="text-xs text-orange-500">
-                  {formatCurrency(user.balance.btc * 45000)}
+                  {formatCurrency((btcWallet?.balance || 0) * (assets.find(a => a.symbol === 'BTC')?.current_price || 0))}
                 </p>
               </div>
               <Bitcoin className="w-6 h-6 text-orange-500" />
@@ -124,10 +139,10 @@ const TradingView: React.FC = () => {
                   ETH Holdings
                 </p>
                 <p className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {user.balance.eth.toFixed(8)}
+                  {(ethWallet?.balance || 0).toFixed(8)}
                 </p>
                 <p className="text-xs text-purple-500">
-                  {formatCurrency(user.balance.eth * 3000)}
+                  {formatCurrency((ethWallet?.balance || 0) * (assets.find(a => a.symbol === 'ETH')?.current_price || 0))}
                 </p>
               </div>
               <Coins className="w-6 h-6 text-purple-500" />
@@ -140,7 +155,13 @@ const TradingView: React.FC = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Trading Chart */}
             <Card className="p-6">
-              <TradingChart data={chartData} />
+              <div className="flex items-center mb-4">
+                <Activity className={`w-6 h-6 mr-2 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Price Charts
+                </h2>
+              </div>
+              <TradingChart />
             </Card>
             
             {/* Market Overview */}

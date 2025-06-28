@@ -1,25 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi } from 'lightweight-charts';
-import { ChartDataPoint } from '../types/chart';
 import useThemeStore from '../store/themeStore';
 import { getCoinHistoricalData, searchCoins } from '../services/api/coinGecko';
-import { Search } from 'lucide-react';
+import { Search, TrendingUp } from 'lucide-react';
 import Input from './ui/Input';
 import Button from './ui/Button';
 
-interface TradingChartProps {
-  data: ChartDataPoint[];
-}
-
-const TradingChart: React.FC<TradingChartProps> = ({ data: initialData }) => {
+const TradingChart: React.FC = () => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const { theme } = useThemeStore();
-  const [selectedCrypto, setSelectedCrypto] = useState<'bitcoin' | 'ethereum'>('bitcoin');
+  const [selectedCrypto, setSelectedCrypto] = useState<string>('bitcoin');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [chartData, setChartData] = useState(initialData);
+  const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const popularCryptos = [
@@ -29,6 +24,10 @@ const TradingChart: React.FC<TradingChartProps> = ({ data: initialData }) => {
     { id: 'polkadot', name: 'Polkadot', symbol: 'DOT' },
     { id: 'chainlink', name: 'Chainlink', symbol: 'LINK' },
     { id: 'litecoin', name: 'Litecoin', symbol: 'LTC' },
+    { id: 'binancecoin', name: 'Binance Coin', symbol: 'BNB' },
+    { id: 'solana', name: 'Solana', symbol: 'SOL' },
+    { id: 'dogecoin', name: 'Dogecoin', symbol: 'DOGE' },
+    { id: 'avalanche-2', name: 'Avalanche', symbol: 'AVAX' },
   ];
 
   useEffect(() => {
@@ -70,13 +69,14 @@ const TradingChart: React.FC<TradingChartProps> = ({ data: initialData }) => {
       },
     });
 
-    const sortedData = [...chartData].sort((a, b) => 
-      new Date(a.time).getTime() - new Date(b.time).getTime()
-    );
+    if (chartData.length > 0) {
+      const sortedData = [...chartData].sort((a, b) => 
+        new Date(a.time).getTime() - new Date(b.time).getTime()
+      );
+      lineSeries.setData(sortedData);
+    }
 
-    lineSeries.setData(sortedData);
     chartRef.current = chart;
-
     window.addEventListener('resize', handleResize);
 
     return () => {
@@ -106,12 +106,8 @@ const TradingChart: React.FC<TradingChartProps> = ({ data: initialData }) => {
     setLoading(true);
     try {
       const historicalData = await getCoinHistoricalData(coinId, 30);
-      const formattedData = historicalData.map(([timestamp, price]) => ({
-        time: new Date(timestamp).toISOString().split('T')[0],
-        value: price,
-      }));
-      setChartData(formattedData);
-      setSelectedCrypto(coinId as any);
+      setChartData(historicalData);
+      setSelectedCrypto(coinId);
     } catch (error) {
       console.error('Error loading crypto data:', error);
     } finally {
@@ -125,14 +121,19 @@ const TradingChart: React.FC<TradingChartProps> = ({ data: initialData }) => {
     setSearchResults([]);
   };
 
+  // Load initial data
+  useEffect(() => {
+    loadCryptoData('bitcoin');
+  }, []);
+
   return (
     <div className="w-full">
       <div className="mb-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {popularCryptos.find(c => c.id === selectedCrypto)?.name || 'Bitcoin'}/USD Price Chart
-            </h2>
+            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {popularCryptos.find(c => c.id === selectedCrypto)?.name || 'Bitcoin'}/USD
+            </h3>
             <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               30-day price history with real-time data
             </p>

@@ -43,7 +43,7 @@ function cleanGeminiAnswer(text: string) {
 
 const extractCoinFromQuery = (query: string): string | null => {
   const lowerQuery = query.toLowerCase();
-  const priceKeywords = ['price', 'cost', 'value', 'worth', 'trading at'];
+  const priceKeywords = ['price', 'cost', 'value', 'worth', 'trading at', 'current', 'how much'];
   const hasPriceKeyword = priceKeywords.some(keyword => lowerQuery.includes(keyword));
   
   if (!hasPriceKeyword) return null;
@@ -108,17 +108,22 @@ const ChatBot: React.FC = () => {
       let priceInfo = '';
       
       if (coinSymbol) {
-        const coinId = getCoinIdFromSymbol(coinSymbol);
-        const priceData = await getCoinPrice(coinId);
-        
-        if (priceData) {
-          const changeDirection = priceData.price_change_percentage_24h >= 0 ? '📈' : '📉';
-          priceInfo = `\n\n💰 Current ${coinSymbol.toUpperCase()} Price: $${priceData.current_price.toLocaleString()} ${changeDirection}\n24h Change: ${priceData.price_change_percentage_24h.toFixed(2)}%\nMarket Cap: $${(priceData.market_cap / 1e9).toFixed(2)}B\n(Source: CoinGecko API)`;
+        try {
+          const coinId = getCoinIdFromSymbol(coinSymbol);
+          const priceData = await getCoinPrice(coinId);
+          
+          if (priceData) {
+            const changeDirection = priceData.price_change_percentage_24h >= 0 ? '📈' : '📉';
+            priceInfo = `\n\n💰 Current ${coinSymbol.toUpperCase()} Price: $${priceData.current_price.toLocaleString()} ${changeDirection}\n24h Change: ${priceData.price_change_percentage_24h.toFixed(2)}%\nMarket Cap: $${(priceData.market_cap / 1e9).toFixed(2)}B\n(Source: CoinGecko API - Real-time data)`;
+          }
+        } catch (priceError) {
+          console.error('Error fetching price:', priceError);
+          priceInfo = `\n\n⚠️ Unable to fetch current ${coinSymbol.toUpperCase()} price at the moment. Please try again later.`;
         }
       }
 
       const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-      const prompt = `You are a helpful cryptocurrency and trading assistant for CryptoTrade platform. Provide concise, accurate, and helpful information about: ${userMessage}. Keep responses brief and actionable. Focus on practical trading advice and market insights.`;
+      const prompt = `You are a helpful cryptocurrency and trading assistant for CryptoTrade platform. Provide concise, accurate, and helpful information about: ${userMessage}. Keep responses brief and actionable. Focus on practical trading advice and market insights. If asked about prices, mention that real-time price data is provided separately.`;
       
       const result = await model.generateContent(prompt);
       const text = result?.response?.text?.() || "Sorry, couldn't get a response.";

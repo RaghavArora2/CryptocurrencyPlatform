@@ -1,15 +1,4 @@
-import axios from 'axios';
-
-const COINGECKO_API_KEY = 'CG-V6pwLsTyaMiWPdFmWVQY8gVX';
-const BASE_URL = 'https://api.coingecko.com/api/v3';
-
-const coinGeckoApi = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10000,
-  headers: {
-    'x-cg-demo-api-key': COINGECKO_API_KEY,
-  },
-});
+import api from '../api';
 
 export interface CoinPrice {
   id: string;
@@ -73,26 +62,15 @@ export interface CoinDetails {
 
 export const getCoinPrice = async (coinId: string): Promise<CoinPrice | null> => {
   try {
-    const response = await coinGeckoApi.get(`/coins/${coinId}`, {
-      params: {
-        localization: false,
-        tickers: false,
-        market_data: true,
-        community_data: false,
-        developer_data: false,
-        sparkline: false,
-      },
-    });
-
-    const data = response.data;
+    const response = await api.get(`/crypto/price/${coinId}`);
     return {
-      id: data.id,
-      current_price: data.market_data.current_price.usd,
-      price_change_24h: data.market_data.price_change_24h,
-      price_change_percentage_24h: data.market_data.price_change_percentage_24h,
-      market_cap: data.market_data.market_cap.usd,
-      volume_24h: data.market_data.total_volume.usd,
-      last_updated: data.last_updated,
+      id: coinId,
+      current_price: response.data.usd,
+      price_change_24h: response.data.usd_24h_change || 0,
+      price_change_percentage_24h: response.data.usd_24h_change || 0,
+      market_cap: response.data.usd_market_cap || 0,
+      volume_24h: response.data.usd_24h_vol || 0,
+      last_updated: new Date().toISOString(),
     };
   } catch (error) {
     console.error(`Error fetching price for ${coinId}:`, error);
@@ -102,17 +80,7 @@ export const getCoinPrice = async (coinId: string): Promise<CoinPrice | null> =>
 
 export const getCoinDetails = async (coinId: string): Promise<CoinDetails | null> => {
   try {
-    const response = await coinGeckoApi.get(`/coins/${coinId}`, {
-      params: {
-        localization: false,
-        tickers: false,
-        market_data: true,
-        community_data: true,
-        developer_data: true,
-        sparkline: false,
-      },
-    });
-
+    const response = await api.get(`/crypto/coin/${coinId}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching details for ${coinId}:`, error);
@@ -122,10 +90,8 @@ export const getCoinDetails = async (coinId: string): Promise<CoinDetails | null
 
 export const searchCoins = async (query: string): Promise<any[]> => {
   try {
-    const response = await coinGeckoApi.get('/search', {
-      params: { query },
-    });
-    return response.data.coins || [];
+    const response = await api.get(`/crypto/search?q=${encodeURIComponent(query)}`);
+    return response.data;
   } catch (error) {
     console.error('Error searching coins:', error);
     return [];
@@ -135,19 +101,33 @@ export const searchCoins = async (query: string): Promise<any[]> => {
 export const getCoinHistoricalData = async (
   coinId: string,
   days: number = 30
-): Promise<number[][]> => {
+): Promise<Array<{ time: string; value: number; timestamp: number }>> => {
   try {
-    const response = await coinGeckoApi.get(`/coins/${coinId}/market_chart`, {
-      params: {
-        vs_currency: 'usd',
-        days,
-        interval: days <= 1 ? 'hourly' : 'daily',
-      },
-    });
-    return response.data.prices || [];
+    const response = await api.get(`/crypto/coin/${coinId}/history?days=${days}`);
+    return response.data;
   } catch (error) {
     console.error(`Error fetching historical data for ${coinId}:`, error);
     return [];
+  }
+};
+
+export const getMarketData = async (page: number = 1, perPage: number = 50) => {
+  try {
+    const response = await api.get(`/crypto/market?page=${page}&per_page=${perPage}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching market data:', error);
+    return [];
+  }
+};
+
+export const getTrendingCoins = async () => {
+  try {
+    const response = await api.get('/crypto/trending');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trending coins:', error);
+    return { coins: [] };
   }
 };
 
