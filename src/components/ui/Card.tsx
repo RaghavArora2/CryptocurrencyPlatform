@@ -6,13 +6,15 @@ interface CardProps {
   className?: string;
   hover?: boolean;
   gradient?: boolean;
+  interactive?: boolean;
 }
 
 const Card: React.FC<CardProps> = ({ 
   children, 
   className = '', 
   hover = false,
-  gradient = false 
+  gradient = false,
+  interactive = false
 }) => {
   const { theme } = useThemeStore();
 
@@ -26,12 +28,16 @@ const Card: React.FC<CardProps> = ({
         : 'bg-white border border-gray-200'
   }`;
 
-  const hoverClasses = hover 
+  const hoverClasses = (hover || interactive)
     ? 'hover:shadow-xl hover:-translate-y-1 cursor-pointer' 
     : '';
 
+  const interactiveClasses = interactive
+    ? 'active:scale-95 select-none'
+    : '';
+
   return (
-    <div className={`${baseClasses} ${hoverClasses} ${className}`}>
+    <div className={`${baseClasses} ${hoverClasses} ${interactiveClasses} ${className}`}>
       {children}
     </div>
   );

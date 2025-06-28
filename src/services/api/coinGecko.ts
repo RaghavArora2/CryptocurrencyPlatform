@@ -1,4 +1,5 @@
 import api from '../api';
+import { mockMarketData, generateMockChartData, mockCoinDetails } from './mockData';
 
 export interface CoinPrice {
   id: string;
@@ -60,9 +61,52 @@ export interface CoinDetails {
   };
 }
 
+// Rate limiting and retry logic
+class APIRateLimiter {
+  private lastRequest = 0;
+  private minInterval = 1000; // 1 second between requests
+  private retryCount = new Map<string, number>();
+  private maxRetries = 3;
+
+  async makeRequest<T>(requestFn: () => Promise<T>, key: string): Promise<T> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequest;
+    
+    if (timeSinceLastRequest < this.minInterval) {
+      await new Promise(resolve => setTimeout(resolve, this.minInterval - timeSinceLastRequest));
+    }
+    
+    this.lastRequest = Date.now();
+    
+    try {
+      const result = await requestFn();
+      this.retryCount.delete(key);
+      return result;
+    } catch (error: any) {
+      const retries = this.retryCount.get(key) || 0;
+      
+      if (error.response?.status === 429 && retries < this.maxRetries) {
+        this.retryCount.set(key, retries + 1);
+        const delay = Math.pow(2, retries) * 2000; // Exponential backoff
+        console.log(`Rate limited, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.makeRequest(requestFn, key);
+      }
+      
+      throw error;
+    }
+  }
+}
+
+const rateLimiter = new APIRateLimiter();
+
 export const getCoinPrice = async (coinId: string): Promise<CoinPrice | null> => {
   try {
-    const response = await api.get(`/crypto/price/${coinId}`);
+    const response = await rateLimiter.makeRequest(
+      () => api.get(`/crypto/price/${coinId}`, { timeout: 30000 }),
+      `price-${coinId}`
+    );
+    
     return {
       id: coinId,
       current_price: response.data.usd,
@@ -73,28 +117,54 @@ export const getCoinPrice = async (coinId: string): Promise<CoinPrice | null> =>
       last_updated: new Date().toISOString(),
     };
   } catch (error) {
-    console.error(`Error fetching price for ${coinId}:`, error);
+    console.warn(`API failed for ${coinId}, using mock data:`, error);
+    const mockCoin = mockMarketData.find(coin => coin.id === coinId);
+    if (mockCoin) {
+      return {
+        id: coinId,
+        current_price: mockCoin.current_price,
+        price_change_24h: mockCoin.current_price * (mockCoin.price_change_percentage_24h / 100),
+        price_change_percentage_24h: mockCoin.price_change_percentage_24h,
+        market_cap: mockCoin.market_cap,
+        volume_24h: mockCoin.total_volume,
+        last_updated: mockCoin.last_updated,
+      };
+    }
     return null;
   }
 };
 
 export const getCoinDetails = async (coinId: string): Promise<CoinDetails | null> => {
   try {
-    const response = await api.get(`/crypto/coin/${coinId}`);
+    const response = await rateLimiter.makeRequest(
+      () => api.get(`/crypto/coin/${coinId}`, { timeout: 30000 }),
+      `details-${coinId}`
+    );
     return response.data;
   } catch (error) {
-    console.error(`Error fetching details for ${coinId}:`, error);
-    return null;
+    console.warn(`API failed for ${coinId} details, using mock data:`, error);
+    return mockCoinDetails[coinId as keyof typeof mockCoinDetails] || null;
   }
 };
 
 export const searchCoins = async (query: string): Promise<any[]> => {
   try {
-    const response = await api.get(`/crypto/search?q=${encodeURIComponent(query)}`);
+    const response = await rateLimiter.makeRequest(
+      () => api.get(`/crypto/search?q=${encodeURIComponent(query)}`, { timeout: 15000 }),
+      `search-${query}`
+    );
     return response.data;
   } catch (error) {
-    console.error('Error searching coins:', error);
-    return [];
+    console.warn('Search API failed, using mock results:', error);
+    return mockMarketData.filter(coin => 
+      coin.name.toLowerCase().includes(query.toLowerCase()) ||
+      coin.symbol.toLowerCase().includes(query.toLowerCase())
+    ).map(coin => ({
+      id: coin.id,
+      name: coin.name,
+      symbol: coin.symbol,
+      thumb: coin.image
+    }));
   }
 };
 
@@ -103,45 +173,54 @@ export const getCoinHistoricalData = async (
   days: number = 30
 ): Promise<Array<{ time: number; value: number }>> => {
   try {
-    const response = await api.get(`/crypto/coin/${coinId}/history?days=${days}`);
-    const rawData = response.data;
+    const response = await rateLimiter.makeRequest(
+      () => api.get(`/crypto/coin/${coinId}/history?days=${days}`, { timeout: 30000 }),
+      `history-${coinId}-${days}`
+    );
     
-    // Use a Map to ensure unique timestamps and keep the last occurrence for each second
+    const rawData = response.data;
     const uniqueDataMap = new Map<number, number>();
     
     rawData.forEach((item: { time: number; value: number }) => {
       uniqueDataMap.set(item.time, item.value);
     });
     
-    // Convert Map back to array and sort by time in ascending order
     const uniqueData = Array.from(uniqueDataMap.entries())
       .map(([time, value]) => ({ time, value }))
       .sort((a, b) => a.time - b.time);
     
     return uniqueData;
   } catch (error) {
-    console.error(`Error fetching historical data for ${coinId}:`, error);
-    return [];
+    console.warn(`Historical data API failed for ${coinId}, using mock data:`, error);
+    const mockCoin = mockMarketData.find(coin => coin.id === coinId);
+    const basePrice = mockCoin?.current_price || 45000;
+    return generateMockChartData(days, basePrice);
   }
 };
 
 export const getMarketData = async (page: number = 1, perPage: number = 50) => {
   try {
-    const response = await api.get(`/crypto/market?page=${page}&per_page=${perPage}`);
+    const response = await rateLimiter.makeRequest(
+      () => api.get(`/crypto/market?page=${page}&per_page=${perPage}`, { timeout: 30000 }),
+      `market-${page}-${perPage}`
+    );
     return response.data;
   } catch (error) {
-    console.error('Error fetching market data:', error);
-    return [];
+    console.warn('Market data API failed, using mock data:', error);
+    return mockMarketData;
   }
 };
 
 export const getTrendingCoins = async () => {
   try {
-    const response = await api.get('/crypto/trending');
+    const response = await rateLimiter.makeRequest(
+      () => api.get('/crypto/trending', { timeout: 15000 }),
+      'trending'
+    );
     return response.data;
   } catch (error) {
-    console.error('Error fetching trending coins:', error);
-    return { coins: [] };
+    console.warn('Trending API failed, using mock data:', error);
+    return { coins: mockMarketData.slice(0, 7).map(coin => ({ item: coin })) };
   }
 };
 
