@@ -20,14 +20,20 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 const WalletPage: React.FC = () => {
-  const { user, updateBalance } = useAuthStore();
+  const { user, wallets, deposit, withdraw } = useAuthStore();
   const { theme } = useThemeStore();
   const [amount, setAmount] = useState('');
   const [transactionType, setTransactionType] = useState<'deposit' | 'withdraw'>('deposit');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const handleTransaction = (e: React.FormEvent) => {
+  // Get balance for specific currency from wallets array
+  const getBalance = (currency: string) => {
+    const wallet = wallets.find(w => w.currency.toLowerCase() === currency.toLowerCase());
+    return wallet?.balance || 0;
+  };
+
+  const handleTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -39,22 +45,22 @@ const WalletPage: React.FC = () => {
       return;
     }
 
-    if (transactionType === 'withdraw' && numAmount > user!.balance.usd) {
+    if (transactionType === 'withdraw' && numAmount > getBalance('USD')) {
       setError('Insufficient balance');
       return;
     }
 
     try {
       if (transactionType === 'deposit') {
-        updateBalance('buy', numAmount, 1, 'usd');
+        await deposit('USD', numAmount);
       } else {
-        updateBalance('sell', numAmount, 1, 'usd');
+        await withdraw('USD', numAmount);
       }
       
       setSuccess(`Successfully ${transactionType}ed $${numAmount.toFixed(2)}`);
       setAmount('');
-    } catch (err) {
-      setError('Transaction failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Transaction failed. Please try again.');
     }
   };
 
@@ -66,14 +72,23 @@ const WalletPage: React.FC = () => {
     { type: 'trade', amount: 800, date: '2024-03-11 08:30', status: 'completed', id: 'TXN005', crypto: 'ETH' },
   ];
 
-  const totalPortfolioValue = user ? 
-    user.balance.usd + (user.balance.btc * 45000) + (user.balance.eth * 3000) : 0;
+  // Calculate portfolio values using current market prices (mock values)
+  const btcPrice = 45000;
+  const ethPrice = 3000;
+  
+  const usdBalance = getBalance('USD');
+  const btcBalance = getBalance('BTC');
+  const ethBalance = getBalance('ETH');
+  
+  const btcValue = btcBalance * btcPrice;
+  const ethValue = ethBalance * ethPrice;
+  const totalPortfolioValue = usdBalance + btcValue + ethValue;
 
-  const portfolioAllocation = user ? [
-    { name: 'USD', value: user.balance.usd, percentage: (user.balance.usd / totalPortfolioValue) * 100, color: 'bg-blue-500' },
-    { name: 'BTC', value: user.balance.btc * 45000, percentage: ((user.balance.btc * 45000) / totalPortfolioValue) * 100, color: 'bg-orange-500' },
-    { name: 'ETH', value: user.balance.eth * 3000, percentage: ((user.balance.eth * 3000) / totalPortfolioValue) * 100, color: 'bg-purple-500' },
-  ] : [];
+  const portfolioAllocation = [
+    { name: 'USD', value: usdBalance, percentage: totalPortfolioValue > 0 ? (usdBalance / totalPortfolioValue) * 100 : 0, color: 'bg-blue-500' },
+    { name: 'BTC', value: btcValue, percentage: totalPortfolioValue > 0 ? (btcValue / totalPortfolioValue) * 100 : 0, color: 'bg-orange-500' },
+    { name: 'ETH', value: ethValue, percentage: totalPortfolioValue > 0 ? (ethValue / totalPortfolioValue) * 100 : 0, color: 'bg-purple-500' },
+  ];
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -118,7 +133,7 @@ const WalletPage: React.FC = () => {
                       Available Cash
                     </p>
                     <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      ${user?.balance.usd.toLocaleString()}
+                      ${usdBalance.toLocaleString()}
                     </p>
                     <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                       Ready for trading
@@ -135,7 +150,7 @@ const WalletPage: React.FC = () => {
                       Crypto Value
                     </p>
                     <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      ${((user?.balance.btc || 0) * 45000 + (user?.balance.eth || 0) * 3000).toLocaleString()}
+                      ${(btcValue + ethValue).toLocaleString()}
                     </p>
                     <div className="flex items-center mt-1 text-green-500">
                       <TrendingUp className="w-3 h-3 mr-1" />
@@ -200,13 +215,13 @@ const WalletPage: React.FC = () => {
                           Bitcoin (BTC)
                         </h4>
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {user?.balance.btc.toFixed(8)} BTC
+                          {btcBalance.toFixed(8)} BTC
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        ${((user?.balance.btc || 0) * 45000).toLocaleString()}
+                        ${btcValue.toLocaleString()}
                       </div>
                       <div className="text-sm text-green-500">+5.2%</div>
                     </div>
@@ -222,13 +237,13 @@ const WalletPage: React.FC = () => {
                           Ethereum (ETH)
                         </h4>
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {user?.balance.eth.toFixed(8)} ETH
+                          {ethBalance.toFixed(8)} ETH
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        ${((user?.balance.eth || 0) * 3000).toLocaleString()}
+                        ${ethValue.toLocaleString()}
                       </div>
                       <div className="text-sm text-green-500">+3.8%</div>
                     </div>

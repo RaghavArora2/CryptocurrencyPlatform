@@ -7,7 +7,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 const ProfilePage: React.FC = () => {
-  const { user, updateProfile } = useAuthStore();
+  const { user, wallets, updateProfile } = useAuthStore();
   const { theme } = useThemeStore();
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -17,15 +17,30 @@ const ProfilePage: React.FC = () => {
     avatar: user?.avatar || 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateProfile(formData);
-    setEditing(false);
+  // Get balance for specific currency from wallets array
+  const getBalance = (currency: string) => {
+    const wallet = wallets.find(w => w.currency.toLowerCase() === currency.toLowerCase());
+    return wallet?.balance || 0;
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateProfile(formData);
+      setEditing(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    }
+  };
+
+  // Calculate portfolio value using wallets data
+  const btcPrice = 45000;
+  const ethPrice = 3000;
+  const portfolioValue = getBalance('USD') + (getBalance('BTC') * btcPrice) + (getBalance('ETH') * ethPrice);
 
   const achievements = [
     { title: 'First Trade', description: 'Completed your first cryptocurrency trade', earned: true },
-    { title: 'Portfolio Builder', description: 'Reached $10,000 portfolio value', earned: user && (user.balance.usd + user.balance.btc * 45000 + user.balance.eth * 3000) > 10000 },
+    { title: 'Portfolio Builder', description: 'Reached $10,000 portfolio value', earned: portfolioValue > 10000 },
     { title: 'Diversified Trader', description: 'Hold at least 3 different cryptocurrencies', earned: false },
     { title: 'Diamond Hands', description: 'Hold positions for 30+ days', earned: false },
   ];
