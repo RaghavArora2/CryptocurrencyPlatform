@@ -22,7 +22,7 @@ const TRACKED_COINS = [
 
 class APIRateLimiter {
   private lastRequestTime = 0;
-  private readonly minInterval = 1000; // 1 second between requests
+  private readonly minInterval = 3000; // Increased from 1000ms to 3000ms (3 seconds)
   private readonly maxRetries = 3;
   private retryTracking = new Map<string, number>();
 
